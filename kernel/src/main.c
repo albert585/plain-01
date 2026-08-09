@@ -4,6 +4,7 @@
 #include <arch/x64/x64.h>
 #include <stdint.h>
 #include "fonts/font.h"
+#include "lib/strings.h"
 
 struct RGBA{
 	uint8_t r,g,b;
@@ -42,14 +43,13 @@ static void hcf(void)
     }
 }
 // kernelmain
-int drawfont(uint8_t* fb,uint32_t x,uint32_t y,    uint64_t codepoint){
+int drawfont(uint8_t* fb,uint32_t x,uint32_t y,    uint64_t ch){
     int idx,found;
     idx=0;
     found=0;
-	struct RGBA c;
-	c.r=255;c.b=255;c.g=255;
+	struct RGBA c={255,255,255};
     for(int i=0;i<font.Chars;i++){
-        if(font.Index[i]==codepoint){idx=i;found=1;break;}
+        if(font.Index[i]==ch){idx=i;found=1;break;}
     }
     if(found==1){
         const uint8_t* data=&font.Bitmap[idx*font.Height];
@@ -62,6 +62,14 @@ int drawfont(uint8_t* fb,uint32_t x,uint32_t y,    uint64_t codepoint){
         }
     }
 	return found;
+}
+void draw_string(uint8_t* fb,uint32_t x,uint32_t y,const char *s){
+    int count=0;
+    for(int i=0;s[i]!='\0';++i){
+        count++;
+        if(s[i]=='\n'){y+=16;count=0;continue;}
+        drawfont(fb,x+8*count,y,s[i]);
+    }
 }
 void kmain()
 {
@@ -94,8 +102,15 @@ void kmain()
             // serial_printk("load\n", 27);
         }
     }
-    int ret=drawfont(fb,100,200,'b');
-    if (ret==1){serial_printk("OK",2);}
+    // int ret=drawfont(fb,100,200,'b');
+    // if (ret==1){serial_printk("OK\n",strlen("OK"));}
+    //draw_string(fb,100,200 ,"The quick brown fox jumps over the lazy dog." );
+    // 小写全字母
+    draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
+    // 大写全字母
+    draw_string(fb, 100, 220, "ABCDEFGHIJ\nKLMNOPQRSTUVWXYZ");
+    // 数字 + 标点
+    //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
     hcf();
 }
 void draw_pixel(uint8_t * fb, uint32_t x,uint32_t y, struct RGBA c){
