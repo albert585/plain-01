@@ -3,18 +3,10 @@
 #include <stdbool.h>
 #include <arch/x64/x64.h>
 #include <stdint.h>
-#include "fonts/font.h"
 #include "lib/strings.h"
+#include "arch/x64/drivers/framebuffer.h"
 
-struct RGBA{
-	uint8_t r,g,b;
-} ;
-
-
-void draw_pixel(uint8_t * fb, uint32_t y,uint32_t x,struct RGBA c);
-extern const struct bitmap_font font;
-
-
+static char  * title="Plain,01\n";
 
 
 // struct bitmap_font {
@@ -25,14 +17,14 @@ extern const struct bitmap_font font;
 // 	const unsigned short *Index;	///< encoding to character index
 // 	const unsigned char *Bitmap;	///< bitmap of all characters
 // };
+
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 
-__attribute__((used,section(".limine_requests"))) static volatile struct  limine_framebuffer_request framebuffer= LIMINE_FRAMEBUFFER_REQUEST;
+__attribute__((used,section(".limine_requests")))  volatile struct  limine_framebuffer_request framebuffer= LIMINE_FRAMEBUFFER_REQUEST;
 
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
-
 // Halt and catch fire function.
 static void hcf(void)
 {
@@ -43,34 +35,7 @@ static void hcf(void)
     }
 }
 // kernelmain
-int drawfont(uint8_t* fb,uint32_t x,uint32_t y,    uint64_t ch){
-    int idx,found;
-    idx=0;
-    found=0;
-	struct RGBA c={255,255,255};
-    for(int i=0;i<font.Chars;i++){
-        if(font.Index[i]==ch){idx=i;found=1;break;}
-    }
-    if(found==1){
-        const uint8_t* data=&font.Bitmap[idx*font.Height];
-        for (uint32_t dy=0;dy<font.Height;++dy){
-            for (uint32_t dx=0;dx<font.Width;++dx){
-                if(data[dy] & (0x80u>>dx)){draw_pixel(fb,x+dx,y+dy,c);
-                }
 
-            }
-        }
-    }
-	return found;
-}
-void draw_string(uint8_t* fb,uint32_t x,uint32_t y,const char *s){
-    int count=0;
-    for(int i=0;s[i]!='\0';++i){
-        count++;
-        if(s[i]=='\n'){y+=16;count=0;continue;}
-        drawfont(fb,x+8*count,y,s[i]);
-    }
-}
 void kmain()
 {
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
@@ -80,11 +45,8 @@ void kmain()
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     serial_init();
-    serial_printk("Plain,01\n", 27);
-	struct RGBA c;
-	c.r=111;
-	c.b=111;
-	c.g=111;
+    serial_printk(title);
+	struct RGBA c={111,111,111};
     for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
         for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
 			draw_pixel(fb,x,y,c);
@@ -92,30 +54,66 @@ void kmain()
            // serial_printk("load\n", 27);
         }
     }
-    for(uint32_t y=100; y<200;++y){
-        for(uint32_t x=10;x<200;++x){
-            uint32_t offset = y*framebuffer.response->framebuffers[0]->pitch+x*4;
-            fb[offset+0] = 255;
-            fb[offset+1]=255;
-            fb[offset+2]=255;
-
-            // serial_printk("load\n", 27);
-        }
-    }
+    // for(uint32_t y=100; y<200;++y){
+    //     for(uint32_t x=10;x<200;++x){
+    //         uint32_t offset = y*framebuffer.response->framebuffers[0]->pitch+x*4;
+    //         fb[offset+0] = 255;
+    //         fb[offset+1]=255;
+    //         fb[offset+2]=255;
+    //
+    //         // serial_printk("load\n", 27);
+    //     }
+    // }
     // int ret=drawfont(fb,100,200,'b');
     // if (ret==1){serial_printk("OK\n",strlen("OK"));}
     //draw_string(fb,100,200 ,"The quick brown fox jumps over the lazy dog." );
     // 小写全字母
+    draw_string(fb,0 , 0, "Hello Plain,01");
     draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
     // 大写全字母
     draw_string(fb, 100, 220, "ABCDEFGHIJ\nKLMNOPQRSTUVWXYZ");
     // 数字 + 标点
     //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
+    int i=0;
+    int n=0;
+    char buf[256];
+    while(1){
+        char c=read_serial();
+        if(c){
+            if(c=='\r'){
+                buf[i]='\0';
+                if(!(kstrcmp(buf,"uname"))){
+                    serial_printk("\n\r");
+                    serial_printk("Plain-01 prototype c ");
+                    draw_string(fb,0,16*(++n),"A toy kernel based on OSDev and limine");
+                    serial_printk("\n\r");
+                } else if(!(kstrcmp(buf,"cat"))){
+                    serial_printk("\n\r");
+                    serial_printk("哈基米南北绿豆");
+                    serial_printk("\n\r");
+                }
+                else{
+                    serial_printk("\n\r");
+                    serial_printk(buf);
+                    serial_printk("\n\r");
+                    draw_string(fb,0,16*(++n),buf);
+                }
+                for(int m=0;m<=i;m++){buf[m]='\0';}//很粗暴的初始化 没有memcpy只能这样子了
+                i=0;
+            }else if(c==0x7F && i>0){
+                i--;
+                buf[i]='\0';
+                write_serial('\b');
+                write_serial(' ');
+                write_serial('\b');
+            }
+            else{
+                buf[i]=c;
+                i++;
+                write_serial(c);
+            }
+
+        }
+    }
     hcf();
-}
-void draw_pixel(uint8_t * fb, uint32_t x,uint32_t y, struct RGBA c){
-	uint32_t offset = y*framebuffer.response->framebuffers[0]->pitch+x*4;
-	fb[offset+0]= c.r;
-	fb[offset+1]=c.g;
-	fb[offset+2]=c.b;
 }

@@ -3,3 +3,6 @@ template-x86_64.iso
 kernel/bin-*
 kernel/obj-*
 kernel/deps
+# 临时测试产物
+1
+*.out

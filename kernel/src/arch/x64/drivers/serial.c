@@ -1,4 +1,5 @@
 #include <arch/x64/x64.h>
+#include <lib/strings.h>
 void serial_init() {
     outb(0x3F8 + 1, 0x00);   // 关中断
     outb(0x3F8 + 3, 0x80);   // DLAB=1, 准备配波特率
@@ -10,8 +11,7 @@ void serial_init() {
 
 char read_serial()
 {
-    while ((inb(SERIAL_PORT + 5) & 1) == 0)
-        ;
+    while ((inb(SERIAL_PORT + 5) & 1) == 0);
     return inb(SERIAL_PORT);
 }
 
@@ -22,9 +22,9 @@ void write_serial(char a)
     outb(SERIAL_PORT, a);
 }
 
-void serial_printk(char *buf, int len)
+void serial_printk(char *buf)
 {
-    for (int i = 0; i < len; i++)
+    for (int i = 0; i < kstrlen(buf); i++)
     {
         if (buf[i] == '\n')
             write_serial('\r');
