@@ -1,0 +1,19 @@
+#include <stdint.h>
+uint64_t gdt[] = {
+    0x0000000000000000ULL,  // Null
+    0x00AF9A000000FFFFULL,  // 内核代码
+    0x00AF92000000FFFFULL,  // 内核数据
+    0x00AFFA000000FFFFULL,  // 用户代码
+    0x00AFF2000000FFFFULL,  // 用户数据
+};
+
+
+struct __attribute__((packed)) gdtr_t {   // packed 必须有！
+    uint16_t limit;                       // 表大小-1
+    uint64_t base;                        // 表的地址
+} gdtr = { sizeof(gdt) - 1, (uint64_t)gdt };
+
+void load_gdt(void)
+{
+    asm volatile("lgdt %0" :: "m"(gdtr) : "memory");
+}
