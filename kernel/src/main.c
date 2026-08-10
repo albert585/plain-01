@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include "lib/strings.h"
 #include "arch/x64/drivers/framebuffer.h"
-
+#include "arch/x64/gdt/gdt.h"
 static char  * title="Plain,01\n";
-
+extern void reloadSegments(void);
 
 // struct bitmap_font {
 // 	unsigned char Width;		///< max. character width
@@ -72,8 +72,15 @@ void kmain()
     draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
     // 大写全字母
     draw_string(fb, 100, 220, "ABCDEFGHIJ\nKLMNOPQRSTUVWXYZ");
+    load_gdt();
+    reloadSegments();
     // 数字 + 标点
     //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
+    // 先设 IDT（用 Limine 的 GDT，selector 0x28！）
+    // set_idt_entry(0x20, isr_wrapper, 0x28, 0x8E);  // 注意：用 Limine 的 0x28，不用你的 0x08
+    // load_idt();
+    // asm("int $0x20");   // 测试：触发软件中断
+    // 串口应输出 "INT!"
     int i=0;
     int n=0;
     char buf[256];
@@ -84,7 +91,7 @@ void kmain()
                 buf[i]='\0';
                 if(!(kstrcmp(buf,"uname"))){
                     serial_printk("\n\r");
-                    serial_printk("Plain-01 prototype c ");
+                    serial_printk("Plain-01 prototype d ");
                     draw_string(fb,0,16*(++n),"A toy kernel based on OSDev and limine");
                     serial_printk("\n\r");
                 } else if(!(kstrcmp(buf,"cat"))){
