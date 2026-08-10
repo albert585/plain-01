@@ -6,6 +6,7 @@
 #include "lib/strings.h"
 #include "arch/x64/drivers/framebuffer.h"
 #include "arch/x64/gdt/gdt.h"
+#include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
 extern void reloadSegments(void);
 
@@ -72,15 +73,14 @@ void kmain()
     draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
     // 大写全字母
     draw_string(fb, 100, 220, "ABCDEFGHIJ\nKLMNOPQRSTUVWXYZ");
-    load_gdt();
+    load_gdt(); //加载自己的GDT
     reloadSegments();
     // 数字 + 标点
     //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
-    // 先设 IDT（用 Limine 的 GDT，selector 0x28！）
-    // set_idt_entry(0x20, isr_wrapper, 0x28, 0x8E);  // 注意：用 Limine 的 0x28，不用你的 0x08
-    // load_idt();
-    // asm("int $0x20");   // 测试：触发软件中断
-    // 串口应输出 "INT!"
+    // 先设 IDT
+    set_idt_entry(0x20, isr_wrapper, 0x08, 0x8E);  // 使用了 0x08
+    load_idt();
+    asm("int $0x20");   // 测试：触发软件中断
     int i=0;
     int n=0;
     char buf[256];

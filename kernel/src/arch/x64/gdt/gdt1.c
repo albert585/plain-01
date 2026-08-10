@@ -26,7 +26,7 @@
 // void set_segment(struct tss tss){
 //     tss.rsp0=
 //} 目前暂时用静态的，动态的后面再说吧
-uint64_t gdt[]=  {
+uint64_t gdt[16]=  {
     0x0000000000000000,
     0x00AF9A000000FFFF,
     0x00CF92000000FFFF,
