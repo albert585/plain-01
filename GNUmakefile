@@ -6,8 +6,8 @@ MAKEFLAGS += -rR
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 4G -serial stdio
-
+QEMUFLAGS := -m 4G -serial stdio -monitor telnet::45454,server,nowait
+ 
 override IMAGE_NAME := template-$(ARCH)
 
 # Toolchain for building the 'limine' executable for the host.

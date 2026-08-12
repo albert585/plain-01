@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "lib/strings.h"
 #include "arch/x64/drivers/framebuffer.h"
+#include "arch/x64/drivers/pci/pci.h"
 #include "arch/x64/gdt/gdt.h"
 #include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
@@ -84,6 +85,8 @@ void kmain()
     int i=0;
     int n=0;
     char buf[256];
+    scan_bus();
+    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2 ,懒得用kmemcpy
     while(1){
         char c=read_serial();
         if(c){

@@ -29,17 +29,17 @@ static inline uint8_t inb(uint16_t port)
 //     __asm__ volatile("outw %w0, %w1" : : "a"(data), "Nd"(port));
 // }
 //
-// static inline uint32_t inl(uint16_t port)
-// {
-//     uint32_t data;
-//     __asm__ volatile("inl %1, %0" : "=a"(data) : "Nd"(port));
-//     return data;
-// }
-//
-// static inline void outl(uint16_t port, uint32_t data)
-// {
-//     __asm__ volatile("outl %0, %1" : : "a"(data), "Nd"(port));
-// }
+static inline uint32_t inl(uint16_t port)
+{
+    uint32_t data;
+    __asm__ volatile("inl %1, %0" : "=a"(data) : "Nd"(port));
+    return data;
+}
+
+static inline void outl(uint16_t port, uint32_t data)
+{
+    __asm__ volatile("outl %0, %1" : : "a"(data), "Nd"(port));
+}
 
 // static inline void flush_tlb(uint64_t addr)
 // {
