@@ -3,7 +3,7 @@
 #include <lib/memory.h>
 
 uint16_t scan_bus(uint8_t offset);
-uint16_t scan_bus2(uint8_t offset);
+//uint16_t scan_bus2(uint8_t offset);
 static void print_hex16(uint16_t val){
     char buf[6];
     for(int i=3;i>=0;--i){
