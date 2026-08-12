@@ -44,10 +44,14 @@ void kmain()
     {
         hcf();
     }
+
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     serial_init();
     serial_printk(title);
+    uintptr_t rsp;
+    asm("mov %%rsp, %0" : "=r"(rsp));
+    print_itoa(rsp % 16);   // 打印 0 是对齐，非 0 是不对齐
 	struct RGBA c={111,111,111};
     for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
         for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
@@ -85,9 +89,11 @@ void kmain()
     int i=0;
     int n=0;
     char buf[256];
-    scan_bus();
-    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2 ,懒得用kmemcpy
+    write_serial('\n');
+    scan_bus2(0x00);
+    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2 ,懒得用kmemcpy，memset还在路上
     while(1){
+        if(i==0){write_serial('>');}
         char c=read_serial();
         if(c){
             if(c=='\r'){
@@ -101,14 +107,27 @@ void kmain()
                     serial_printk("\n\r");
                     serial_printk("哈基米南北绿豆");
                     serial_printk("\n\r");
-                }
+                }else if(!(kstrcmp(buf,"pci"))){
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x00:");
+                    scan_bus(0x00);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x08:");
+                    scan_bus(0x08);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x09:");
+                    scan_bus(0x09);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x0A:");
+                    scan_bus(0x0A);
+                    serial_printk("\n\r");}
                 else{
                     serial_printk("\n\r");
                     serial_printk(buf);
                     serial_printk("\n\r");
                     draw_string(fb,0,16*(++n),buf);
                 }
-                for(int m=0;m<=i;m++){buf[m]='\0';}//很粗暴的初始化 没有memcpy只能这样子了
+                for(int m=0;m<=i;m++){buf[m]='\0';}
                 i=0;
             }else if(c==0x7F && i>0){
                 i--;

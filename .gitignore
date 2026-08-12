@@ -6,3 +6,8 @@ kernel/deps
 # 临时测试产物
 1
 *.out
+
+# 编辑器临时文件
+*.kate-swp
+*.swp
+*~

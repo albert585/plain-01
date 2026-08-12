@@ -1,7 +1,7 @@
 
 
 #include "pci.h"
-
+#include <lib/memory.h>
 #include <stdint.h>
 const uint16_t pci_config_address=0x0cf8;
 const uint16_t pci_data_address=0x0cfc;
@@ -23,25 +23,17 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offs
     tmp = (uint16_t)((inl(pci_data_address) >> ((offset & 2) * 8)) & 0xFFFF);
     return tmp;
 }
-void print_hex32(uint32_t val) {
-    char buf[9];
-    for (int i = 7; i >= 0; i--) {
-        uint8_t nib = val & 0xF;
-        buf[i] = nib < 10 ? '0' + nib : 'A' + (nib - 10);
-        val >>= 4;
-    }
-    buf[8] = '\0';
-    serial_printk(buf);
-}
-uint16_t scan_bus(){
+
+uint16_t scan_bus(uint8_t offset){
     uint16_t data=0;
+    uint16_t func1=0;
     uint16_t pci=0;
-    for(uint8_t bus=0;bus<=255;bus++){
-        for(uint8_t slot=0;slot<8;++slot){
+    for(uint32_t bus=0;bus<=255;bus++){
+        for(uint8_t slot=0;slot<32;++slot){
             if ((data  = pciConfigReadWord(bus,slot,0,0 ))!=0xFFFF){
                 for(uint8_t func=0;func<8;++func){
-                    pci=pciConfigReadWord(bus,slot,func,0 );
-                    print_hex32(pci);
+                    if((func1 = pciConfigReadWord(bus,slot,func,0 ))!=0xFFFF){pci=pciConfigReadWord(bus,slot,func,offset );print_hex16(pci);}
+
                 }
             }
 
@@ -49,3 +41,35 @@ uint16_t scan_bus(){
     }
     return pci;
 }
+uint16_t scan_bus2(uint8_t offset){
+    uint16_t data=0;
+    uint16_t func1=0;
+    uint16_t pci=0;
+    for(uint32_t bus=0;bus<=255;bus++){
+        switch(pciConfigReadWord(bus,0,0,0)){
+            case 0x8086:
+                serial_printk("intel,");
+                break;
+            default:
+                serial_printk("unknown,");
+                break;}
+                for(uint8_t slot=0;slot<32;++slot){
+                    switch(pciConfigReadWord(bus,slot,0,0)){
+                        case 0x0000:
+                            serial_printk("none,");
+                            break;
+                        default:
+                            serial_printk("unknown,");
+                            break;}
+                            for(uint8_t func=0;func<8;++func){
+                                switch(pciConfigReadWord(bus,slot,func,0)){
+                                    case 0x0000:
+                                        serial_printk("none,");
+                                        break;
+                                    default:
+                                        serial_printk("unknown,");
+                                        break;}
+                            }
+                }
+    return pci;}
+
