@@ -26,3 +26,4 @@ jobs:
         name: plain-01-build
         path: |
           *.iso
+          kernel/bin-*/kernel
