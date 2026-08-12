@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install_nasm
+      run: sudo apt update && sudo apt install -y nasm
     - name: make
-      run: df -h
+      run: make
 
