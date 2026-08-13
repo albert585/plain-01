@@ -10,6 +10,7 @@
 #include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
 extern void reloadSegments(void);
+extern void init_pic(void);
 
 // struct bitmap_font {
 // 	unsigned char Width;		///< max. character width
@@ -49,6 +50,7 @@ void kmain()
 
     serial_init();
     serial_printk(title);
+    init_pic();
     uintptr_t rsp;
     asm("mov %%rsp, %0" : "=r"(rsp));
     print_itoa(rsp % 16);   // 打印 0 是对齐，非 0 是不对齐
@@ -90,7 +92,6 @@ void kmain()
     int n=0;
     char buf[256];
     write_serial('\n');
-    scan_bus2(0x00);
     for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2 ,懒得用kmemcpy，memset还在路上
     while(1){
         if(i==0){write_serial('>');}
@@ -108,24 +109,25 @@ void kmain()
                     serial_printk("哈基米南北绿豆");
                     serial_printk("\n\r");
                 }else if(!(kstrcmp(buf,"pci"))){
+                    // serial_printk("\n\r");
+                    // serial_printk("offset 0x00:");
+                    // scan_bus(0x00);
+                    // serial_printk("\n\r");
+                    // serial_printk("offset 0x08:");
+                    // scan_bus(0x08);
+                    // serial_printk("\n\r");
+                    // serial_printk("offset 0x09:");
+                    // scan_bus(0x09);
+                    // serial_printk("\n\r");
+                    // serial_printk("offset 0x0A:");
+                    // scan_bus(0x0A);
+                    // serial_printk("\n\r");}
                     serial_printk("\n\r");
-                    serial_printk("offset 0x00:");
-                    scan_bus(0x00);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x08:");
-                    scan_bus(0x08);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x09:");
-                    scan_bus(0x09);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x0A:");
-                    scan_bus(0x0A);
-                    serial_printk("\n\r");}
+                    scan_bus_again();}
                 else{
                     serial_printk("\n\r");
-                    serial_printk(buf);
+                    serial_printk("unknow command");
                     serial_printk("\n\r");
-                    draw_string(fb,0,16*(++n),buf);
                 }
                 for(int m=0;m<=i;m++){buf[m]='\0';}
                 i=0;
