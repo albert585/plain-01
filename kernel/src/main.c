@@ -10,9 +10,48 @@
 #include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
 extern void division_error_wrapper(void);
-
+extern void sse_start(void);
 extern void reloadSegments(void);
 extern void init_pic(void);
+extern void check_cpuid(void);
+void err_not_support(uint8_t a){
+    switch(a){
+        case 1:
+            serial_printk("your CPU don`t support SSE");
+            break;
+        default:
+            break;
+    }
+}
+void print_hex64(uint64_t val){
+    char buf[18];
+    for(int i=15;i>=0;--i){
+        uint8_t temp = val& 0xF;
+        buf[i]=temp<10 ? '0'+temp:'A'+(temp-10);
+        val>>=4;
+    }
+    buf[16]='\0';
+    serial_printk(buf);
+}
+
+static void get_model(void)
+{
+    uint64_t rbx, rcx,rdx,unused;
+    char str[14]={0};
+    __cpuid(0, unused, rbx, rcx, rdx);
+    for(int i=0;i<=3;++i){
+        str[i]=rbx>>(i*8)&0xFF;
+    }
+    for(int i=4;i<=7;++i){
+        str[i]=rdx>>((i-4)*8)&0xFF;
+    }
+    for(int i=8;i<=11;++i){
+        str[i]=rcx>>((i-8)*8)&0xFF;
+    }
+    str[12]='\n';
+    str[13]='\0';
+    serial_printk(str);
+}
 
 // struct bitmap_font {
 // 	unsigned char Width;		///< max. character width
@@ -64,6 +103,7 @@ void kmain()
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     serial_init();
+    sse_start();
     serial_printk(title);
     init_pic();
     uintptr_t rsp;
@@ -131,6 +171,9 @@ void kmain()
 
                 }else if(!(kstrcmp(buf,"df"))){
                     *((volatile uint64_t*)0xDEADBEEF)=0x114514;
+                }else if(!(kstrcmp(buf,"cpuid"))){
+                    serial_printk("\n\r");
+                    get_model();
                 }else if(!(kstrcmp(buf,"pci"))){
                     // serial_printk("\n\r");
                     // serial_printk("offset 0x00:");
@@ -149,7 +192,7 @@ void kmain()
                     scan_bus_again();}
                 else{
                     serial_printk("\n\r");
-                    serial_printk("unknow command");
+                    serial_printk("unknown command");
                     serial_printk("\n\r");
                 }
                 for(int m=0;m<=i;m++){buf[m]='\0';}
