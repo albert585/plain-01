@@ -10,4 +10,4 @@ $ make
 ## TODO
 - [ ] completed the IDT exceptions table
 - [ ] 正式开始使用PIC，添加PIC Timer
-- [ ] - [ ] 开启TSS
+- [ ] 开启TSS
