@@ -41,7 +41,7 @@ static void print_hex64(uint64_t val,uint8_t * fb,uint32_t x,uint32_t y){
         buf[i]=temp<10 ? '0'+temp:'A'+(temp-10);
         val>>=4;
     }
-    buf[17]='\0';
+    buf[16]='\0';
    draw_string(fb,x,y,&buf[0]);
 }
 void  division_error_handler(void){

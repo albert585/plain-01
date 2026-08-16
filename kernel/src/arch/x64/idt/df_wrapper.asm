@@ -58,7 +58,7 @@ division_error_wrapper:
     pop rdx
     pop rcx
     pop rax
-    add  [rsp],2
+    add  qword [rsp],2
     iretq
 
 
