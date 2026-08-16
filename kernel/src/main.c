@@ -9,6 +9,8 @@
 #include "arch/x64/gdt/gdt.h"
 #include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
+extern void division_error_wrapper(void);
+
 extern void reloadSegments(void);
 extern void init_pic(void);
 
@@ -38,7 +40,20 @@ static void hcf(void)
     }
 }
 // kernelmain
+void trigger_divide_error(void) {
+    volatile int a = 10;
+    volatile int b = 0;
 
+    // 方法1：直接用汇编
+    __asm__ volatile(
+        "movl %[a], %%eax\n\t"
+        "movl %[b], %%ebx\n\t"
+        "divl %%ebx\n\t"      // 这里的 ebx=0，CPU 触发 #DE
+        :
+        : [a] "m" (a), [b] "m" (b)
+        : "eax", "ebx", "cc"
+    );
+}
 void kmain()
 {
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
@@ -76,6 +91,7 @@ void kmain()
     // if (ret==1){serial_printk("OK\n",strlen("OK"));}
     //draw_string(fb,100,200 ,"The quick brown fox jumps over the lazy dog." );
     // 小写全字母
+
     draw_string(fb,0 , 0, "Hello Plain,01");
     draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
     // 大写全字母
@@ -85,6 +101,8 @@ void kmain()
     // 数字 + 标点
     //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
     // 先设 IDT
+    set_idt_entry(0x00,division_error_wrapper,0x08,0x8E);
+    set_idt_entry(0x08,double_fault_wrapper,0x08,0x8E);
     set_idt_entry(0x20, isr_wrapper, 0x08, 0x8E);  // 使用了 0x08
     load_idt();
     asm("int $0x20");   // 测试：触发软件中断
@@ -92,7 +110,7 @@ void kmain()
     int n=0;
     char buf[256];
     write_serial('\n');
-    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2 ,懒得用kmemcpy，memset还在路上
+    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2
     while(1){
         if(i==0){write_serial('>');}
         char c=read_serial();
@@ -108,6 +126,11 @@ void kmain()
                     serial_printk("\n\r");
                     serial_printk("哈基米南北绿豆");
                     serial_printk("\n\r");
+                } else if(!(kstrcmp(buf,"de"))){
+                        trigger_divide_error();
+
+                }else if(!(kstrcmp(buf,"df"))){
+                    *((volatile uint64_t*)0xDEADBEEF)=0x114514;
                 }else if(!(kstrcmp(buf,"pci"))){
                     // serial_printk("\n\r");
                     // serial_printk("offset 0x00:");

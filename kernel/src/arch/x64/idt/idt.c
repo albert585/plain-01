@@ -1,6 +1,7 @@
 #include "idt.h"
 #include <stdint.h>
 #include "arch/x64/drivers/serial.h"
+#include "arch/x64/drivers/framebuffer.h"
 struct InterruptDescriptor64 {
     uint16_t offset_1;        // offset bits 0..15
     uint16_t selector;        // a code segment selector in GDT or LDT
@@ -29,6 +30,45 @@ void load_idt(void)
 {
     asm volatile("lidt %0" :: "m"(idtr) : "memory");
 }
+
 void interrupt_handler(void){
     serial_printk("INT!");
 }
+static void print_hex64(uint64_t val,uint8_t * fb,uint32_t x,uint32_t y){
+    char buf[10];
+    for(int i=7;i>=0;--i){
+        uint8_t temp = val& 0xF;
+        buf[i]=temp<10 ? '0'+temp:'A'+(temp-10);
+        val>>=4;
+    }
+    buf[9]='\0';
+   draw_string(fb,x,y,&buf[0]);
+}
+void  division_error_handler(void){
+    uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
+    draw_string(fb,500,500,"Error: divided by zero");
+
+}
+void  double_fault_handler(uint64_t error_code,uint64_t rip){
+    uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
+
+    struct RGBA c={0,0,0};
+    for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
+        for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
+            draw_pixel(fb,x,y,c);}}
+            draw_string(fb,500,500,"DOUBLE FAULT");
+            draw_string(fb,500,517,"ERROR CODE:");
+            print_hex64(error_code,fb,589,517);
+            draw_string(fb,500,534,"RIP:");
+            print_hex64(rip,fb,533,534);
+}
+void  tss_fault_handler(uint64_t error_code,uint64_t rip){
+    uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
+
+    struct RGBA c={0,0,0};
+    for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
+        for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
+            draw_pixel(fb,x,y,c);}}
+            draw_string(fb,500,500,"DOUBLE FAULT");
+}
+
