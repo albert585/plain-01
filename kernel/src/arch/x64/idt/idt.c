@@ -35,13 +35,13 @@ void interrupt_handler(void){
     serial_printk("INT!");
 }
 static void print_hex64(uint64_t val,uint8_t * fb,uint32_t x,uint32_t y){
-    char buf[10];
-    for(int i=7;i>=0;--i){
+    char buf[18];
+    for(int i=15;i>=0;--i){
         uint8_t temp = val& 0xF;
         buf[i]=temp<10 ? '0'+temp:'A'+(temp-10);
         val>>=4;
     }
-    buf[9]='\0';
+    buf[17]='\0';
    draw_string(fb,x,y,&buf[0]);
 }
 void  division_error_handler(void){
@@ -59,8 +59,8 @@ void  double_fault_handler(uint64_t error_code,uint64_t rip){
             draw_string(fb,500,500,"DOUBLE FAULT");
             draw_string(fb,500,517,"ERROR CODE:");
             print_hex64(error_code,fb,589,517);
-            draw_string(fb,500,534,"RIP:");
-            print_hex64(rip,fb,533,534);
+            draw_string(fb,500,534,"RIP:0x");
+            print_hex64(rip,fb,549,534);
 }
 void  tss_fault_handler(uint64_t error_code,uint64_t rip){
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;

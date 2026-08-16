@@ -108,9 +108,9 @@ void kmain()
     asm("int $0x20");   // 测试：触发软件中断
     int i=0;
     int n=0;
-    char buf[256];
+    char buf[256]={0};
     write_serial('\n');
-    for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2
+    //for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2
     while(1){
         if(i==0){write_serial('>');}
         char c=read_serial();
