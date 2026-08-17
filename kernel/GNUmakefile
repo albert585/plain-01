@@ -21,7 +21,7 @@ endif
 CC := clang
 
 # User controllable C flags.
-CFLAGS := -g -O0
+CFLAGS := -g -O0 -fno-builtin
 
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=

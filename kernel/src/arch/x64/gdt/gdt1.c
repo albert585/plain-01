@@ -1,4 +1,7 @@
 #include <stdint.h>
+#include "lib/memory.h"
+static volatile uint8_t double_fault_stack[8192];
+static volatile uint8_t kernel_stack[8192];
 // struct gdt  {
 //     uint16_t limit;          // limit 15:0
 //     uint16_t base_low;       // base 15:0
@@ -9,30 +12,41 @@
 //     uint32_t base_upper;     // base 63:32 ← 你写的 base_fin
 //     uint32_t reserved;       // ← 补这个，必须 0
 // } __attribute__((packed));
-// /*
-// struct tss {
-//     uint32_t reserved0;          // 0x00
-//     uint64_t rsp0;               // 0x04  ← ring 0 栈指针（最重要的字段）
-//     uint64_t rsp1;               // 0x0C
-//     uint64_t rsp2;               // 0x14
-//     uint64_t reserved1;          // 0x1C
-//     uint64_t ist[7];             // 0x24  ← 中断栈表
-//     uint64_t reserved2;          // 0x5C
-//     uint16_t reserved3;          // 0x64
-//     uint16_t iomap_base;         // 0x66
-// } __attribute__((packed));
-//
-// static struct tss tss;
-// void set_segment(struct tss tss){
-//     tss.rsp0=
-//} 目前暂时用静态的，动态的后面再说吧
+// 
+struct tss {
+    uint32_t reserved0;          // 0x00
+    uint64_t rsp0;               // 0x04  ← ring 0 栈指针（最重要的字段）
+    uint64_t rsp1;               // 0x0C
+    uint64_t rsp2;               // 0x14
+    uint64_t reserved1;          // 0x1C
+    uint64_t ist[7];             // 0x24  ← 中断栈表
+    uint64_t reserved2;          // 0x5C
+    uint16_t reserved3;          // 0x64
+    uint16_t iomap_base;         // 0x66
+} __attribute__((packed));
+struct tss tss = {0};
+
+ //目前暂时用静态的，动态的后面再说吧
 uint64_t gdt[16]=  {
     0x0000000000000000,
     0x00AF9A000000FFFF,
     0x00CF92000000FFFF,
     0x00AFFA000000FFFF,
     0x00CFF2000000FFFF,
+    0,
+    0,
 };
+void set_tss(uint64_t *gdt,uint64_t base){
+    uint64_t limit=sizeof(struct tss)-1;
+    gdt[5] = 0;
+    gdt[5] |=limit;
+    gdt[5] |=(base&0xFFFF)<<16;
+    gdt[5] |=((base>>16)&0xFF)<<32;
+    gdt[5] |=0x89ULL<<40;
+    gdt[5] |= 0ULL<<52;
+    gdt[5] |=((base>>24)&0xFF)<<56;
+    gdt[6] |=((base>>32)&0xFFFFFFFF);
+}
 struct gdtr_t{
     uint16_t limit;
     uint64_t base;
@@ -41,6 +55,16 @@ struct gdtr_t gdtr={sizeof(gdt)-1,(uint64_t)gdt};
 
 void load_gdt(void)
 {
+
+    kmemset(kernel_stack,0,sizeof(kernel_stack));
+
+    kmemset(double_fault_stack,0,sizeof(double_fault_stack));
+    tss.rsp0=(uint64_t)(kernel_stack+sizeof(kernel_stack));
+    tss.ist[0]=(uint64_t)(double_fault_stack+sizeof(double_fault_stack));
+    tss.iomap_base=sizeof(tss);
+    set_tss(gdt,(uint64_t)&tss);
+    uint16_t tss_select=0x28;
     asm volatile("lgdt %0" :: "m"(gdtr) : "memory");
+    asm volatile("ltr %0" : : "r" (tss_select): "memory");
 }
 

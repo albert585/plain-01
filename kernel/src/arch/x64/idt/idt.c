@@ -1,4 +1,5 @@
 #include "idt.h"
+
 #include <stdint.h>
 #include "arch/x64/drivers/serial.h"
 #include "arch/x64/drivers/framebuffer.h"
@@ -17,14 +18,14 @@ struct idtr_t{
     uint64_t offset;
 }__attribute__((packed));
 struct idtr_t idtr={sizeof(idt)-1,(uint64_t)idt};
-void set_idt_entry(uint8_t vec, void (*handler)(void), uint16_t selector, uint8_t type_attr){
+void set_idt_entry(uint8_t vec, void (*handler)(void), uint16_t selector, uint8_t type_attr,uint8_t ist){
     uint64_t addr = (uint64_t)handler;
     idt[vec].offset_1=addr&0xFFFF;
     idt[vec].offset_2=(addr>>16)&0xFFFF;
     idt[vec].offset_3=(addr>>32)&0xFFFFFFFF;
     idt[vec].selector=selector;
     idt[vec].type_attributes=type_attr;
-    idt[vec].ist=0;
+    idt[vec].ist=ist;
 }
 void load_idt(void)
 {
@@ -69,6 +70,23 @@ void  tss_fault_handler(uint64_t error_code,uint64_t rip){
     for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
         for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
             draw_pixel(fb,x,y,c);}}
-            draw_string(fb,500,500,"DOUBLE FAULT");
+            draw_string(fb,500,500,"Invalid TSS");
+            draw_string(fb,500,517,"ERROR CODE:");
+            print_hex64(error_code,fb,589,517);
+            draw_string(fb,500,534,"RIP:0x");
+            print_hex64(rip,fb,549,534);
 }
 
+void  page_fault_handler(uint64_t error_code,uint64_t rip){
+    uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
+
+    struct RGBA c={0,0,0};
+    for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
+        for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
+            draw_pixel(fb,x,y,c);}}
+            draw_string(fb,500,500,"PAGE FAULT");
+            draw_string(fb,500,517,"ERROR CODE:");
+            print_hex64(error_code,fb,589,517);
+            draw_string(fb,500,534,"RIP:0x");
+            print_hex64(rip,fb,549,534);
+}

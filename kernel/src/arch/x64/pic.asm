@@ -26,12 +26,7 @@ init_pic:
     mov al, 0x01
     out 0x21, al
 
-    mov al, 0x20
-    out 0x21, al
-    mov al, 0x04
-    out 0x21, al
-    mov al, 0x01
-    out 0x21, al
+
     mov al, 0x11
     out 0xA0, al            ; 写入从 PIC 命令端口
 
@@ -47,6 +42,15 @@ init_pic:
     mov al, 0x01
     out 0xA1, al
 
+    mov al,0xFC
+    out 0x21,al
+
+    mov al,0xFF
+    out 0xA1,al
+    out 0x20,al;
+    mov al, 0x20
+
+    sti
     pop r15
     pop r14
     pop r13

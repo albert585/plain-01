@@ -14,9 +14,11 @@
 global double_fault_wrapper
 global division_error_wrapper
 global tss_fault_wrapper
+global page_fault_wrapper
 extern division_error_handler
 extern double_fault_handler
 extern tss_fault_handler
+extern page_fault_handler
 
 align 4
 
@@ -75,4 +77,11 @@ tss_fault_wrapper:
     mov rdi, [rsp]
     mov rsi, [rsp+8] ; pass error code as 1st argument (rdi)
     call tss_fault_handler
+    jmp hang
+
+page_fault_wrapper:
+    cld                         ; SysV ABI requires DF = 0 on function entry
+    mov rdi, [rsp]
+    mov rsi, [rsp+8] ; pass error code as 1st argument (rdi)
+    call page_fault_handler
     jmp hang

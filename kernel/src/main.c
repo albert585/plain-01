@@ -10,6 +10,14 @@
 #include "arch/x64/idt/idt.h"
 static char  * title="Plain,01\n";
 extern void division_error_wrapper(void);
+extern void page_fault_wrapper(void);
+static inline void cli(void) {
+    asm volatile("cli");
+}
+
+static inline void sti(void) {
+    asm volatile("sti");
+}
 extern void sse_start(void);
 extern void reloadSegments(void);
 extern void init_pic(void);
@@ -93,6 +101,20 @@ void trigger_divide_error(void) {
         : "eax", "ebx", "cc"
     );
 }
+unsigned read_pit_count(void) {
+    unsigned count = 0;
+    
+    // 禁用中断
+    cli();
+    
+    // al = 位6和7中的通道，其余位清零
+    outb(0x43, 0b0000000); // 注意：此处原始代码有误，应发送锁存命令，例如0x00？实际应为通道0的锁存命令，根据文档应为0x00？但文档说CC000000，对于通道0即0x00，但最好用宏。
+    
+    count = inb(0x40);      // 低字节
+    count |= inb(0x40) << 8; // 高字节
+    sti();
+    return count;
+}
 void kmain()
 {
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
@@ -105,7 +127,7 @@ void kmain()
     serial_init();
     sse_start();
     serial_printk(title);
-    init_pic();
+    
     uintptr_t rsp;
     asm("mov %%rsp, %0" : "=r"(rsp));
     print_itoa(rsp % 16);   // 打印 0 是对齐，非 0 是不对齐
@@ -141,11 +163,13 @@ void kmain()
     // 数字 + 标点
     //draw_string(fb, 100, 240, "0123456789 !@#$%^&*()");
     // 先设 IDT
-    set_idt_entry(0x00,division_error_wrapper,0x08,0x8E);
-    set_idt_entry(0x08,double_fault_wrapper,0x08,0x8E);
-    set_idt_entry(0x20, isr_wrapper, 0x08, 0x8E);  // 使用了 0x08
+    set_idt_entry(0x00,division_error_wrapper,0x08,0x8E,0);
+    set_idt_entry(0x08,double_fault_wrapper,0x08,0x8E,0);
+    set_idt_entry(0x20, isr_wrapper, 0x08, 0x8E,0);  // 使用了 0x08
+    set_idt_entry(0x0E, page_fault_wrapper, 0x08, 0x8E,1);
     load_idt();
-    asm("int $0x20");   // 测试：触发软件中断
+    init_pic();
+    //asm("int $0x20");   // 测试：触发软件中断
     int i=0;
     int n=0;
     char buf[256]={0};
@@ -168,7 +192,8 @@ void kmain()
                     serial_printk("\n\r");
                 } else if(!(kstrcmp(buf,"de"))){
                         trigger_divide_error();
-
+                        print_itoa(read_pit_count());
+                        serial_printk("\n\r");
                 }else if(!(kstrcmp(buf,"df"))){
                     *((volatile uint64_t*)0xDEADBEEF)=0x114514;
                 }else if(!(kstrcmp(buf,"cpuid"))){
