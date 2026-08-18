@@ -18,6 +18,18 @@ Third-party components
              under AGPLv3; that license applies to the conversion tool only
              and does NOT apply to this generated font data.
 
+2. mm/ memory management skeleton (HHDM request, bitmap frame allocator)
+   Location: kernel/src/mm/hhdm.c, kernel/src/mm/hhdm.h,
+             kernel/src/mm/frame.c, kernel/src/mm/frame.h
+   Source:   https://github.com/iNagisa/OS_design
+   Author:   iNagisa
+   License:  0BSD (BSD Zero Clause)
+   Note:     Ported and adapted for plain-01.
+
+3. freestnd-c-hdrs / limine.h: mintsuki and contributors
+   License: 0BSD
+   See: kernel/freestnd-c-hdrs/LICENSE
+
 X License (applies to the font data above)
 ------------------------------------------
 

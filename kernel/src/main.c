@@ -8,6 +8,18 @@
 #include "arch/x64/drivers/pci/pci.h"
 #include "arch/x64/gdt/gdt.h"
 #include "arch/x64/idt/idt.h"
+#include "mm/hhdm.h"
+#include "mm/frame.h"
+#include "arch/x64/mm/page_table.h"
+__attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
+
+__attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
+
+__attribute__((used,section(".limine_requests")))  volatile struct  limine_framebuffer_request framebuffer= LIMINE_FRAMEBUFFER_REQUEST;
+/* memmap / hhdm 请求已移到 kernel/src/mm/ 下 */
+__attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
+
+uint64_t mem;
 static char  * title="Plain,01\n";
 extern void division_error_wrapper(void);
 extern void page_fault_wrapper(void);
@@ -70,13 +82,7 @@ static void get_model(void)
 // 	const unsigned char *Bitmap;	///< bitmap of all characters
 // };
 
-__attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 
-__attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
-
-__attribute__((used,section(".limine_requests")))  volatile struct  limine_framebuffer_request framebuffer= LIMINE_FRAMEBUFFER_REQUEST;
-
-__attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 // Halt and catch fire function.
 static void hcf(void)
 {
@@ -108,13 +114,14 @@ unsigned read_pit_count(void) {
     cli();
     
     // al = 位6和7中的通道，其余位清零
-    outb(0x43, 0b0000000); // 注意：此处原始代码有误，应发送锁存命令，例如0x00？实际应为通道0的锁存命令，根据文档应为0x00？但文档说CC000000，对于通道0即0x00，但最好用宏。
+    outb(0x43, 0b0000000); 
     
     count = inb(0x40);      // 低字节
     count |= inb(0x40) << 8; // 高字节
     sti();
     return count;
 }
+uint64_t mem;
 void kmain()
 {
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
@@ -125,6 +132,9 @@ void kmain()
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     serial_init();
+
+    hhdm_init();
+    frame_init();
     sse_start();
     serial_printk(title);
     
@@ -199,6 +209,65 @@ void kmain()
                 }else if(!(kstrcmp(buf,"cpuid"))){
                     serial_printk("\n\r");
                     get_model();
+                }else if(!(kstrcmp(buf,"mem"))){
+                    serial_printk("\n\r");
+                    serial_printk("HHDM offset: 0x");
+                    print_hex64(hhdm_offset);
+                    serial_printk("\n\rframes total/free: ");
+                    print_itoa(pmm.total_frames);
+                    serial_printk(" / ");
+                    print_itoa(pmm.free_frames);
+                    serial_printk("\n\r");
+                    /* 自测：分配 4 帧，写一个值，释放 */
+                    uint64_t p = frame_alloc(4);
+                    serial_printk("alloc 4 frames @0x");
+                    print_hex64(p);
+                    serial_printk(", free now: ");
+                    print_itoa(pmm.free_frames);
+                    serial_printk("\n\r");
+                    volatile uint64_t *v = (volatile uint64_t *)phys_to_virt(p);
+                    *v = 0x1234;
+                    serial_printk("write via HHDM: 0x");
+                    print_hex64(*v);
+                    serial_printk("\n\r");
+                    frame_free(p, 4);
+                    serial_printk("freed, free now: ");
+                    print_itoa(pmm.free_frames);
+                    serial_printk("\n\r");
+                }else if(!(kstrcmp(buf,"pt"))){
+                    serial_printk("\n\rcurrent PML4 @0x");
+                    print_hex64((uint64_t)get_current_pml4());
+                    serial_printk("\n\r");
+                    /* 自测：建一棵独立页表，映射一个测试虚拟地址 */
+                    uint64_t *test_pml4 = (uint64_t *)phys_to_virt(frame_alloc(1));
+                    uint64_t  test_phys = frame_alloc(1);
+                    const uint64_t TEST_VA = 0xFFFF900000000000ULL;
+                    map_page(test_pml4, TEST_VA, test_phys, PF_WRITE);
+                    volatile uint64_t *tv = (volatile uint64_t *)TEST_VA;
+                    serial_printk("test pml4 @0x");
+                    print_hex64((uint64_t)test_pml4);
+                    serial_printk(", test frame @0x");
+                    print_hex64(test_phys);
+                    serial_printk("\n\rmap_page done. (NOT touching CR3)\n\r");
+                    /* 现在还没切 CR3，TEST_VA 不可访问；验证页表项内容 */
+                    uint64_t pte = 0;
+                    {
+                        uint64_t *t = test_pml4;
+                        uint64_t idx;
+                        for (int level = 0; level < 3; ++level) {
+                            idx = (TEST_VA >> (39 - 9*level)) & 0x1FF;
+                            t = (uint64_t *)phys_to_virt(t[idx] & PTE_ADDR_MASK);
+                        }
+                        idx = (TEST_VA >> 12) & 0x1FF;
+                        pte = t[idx];
+                    }
+                    serial_printk("PTE = 0x");
+                    print_hex64(pte);
+                    serial_printk(" (expect phys | P|W|NX)\n\r");
+                    unmap_page(test_pml4, TEST_VA);
+                    serial_printk("unmapped. free frames: ");
+                    print_itoa(pmm.free_frames);
+                    serial_printk("\n\r");
                 }else if(!(kstrcmp(buf,"pci"))){
                     // serial_printk("\n\r");
                     // serial_printk("offset 0x00:");
