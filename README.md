@@ -1,6 +1,6 @@
 # plain-01
 
-a small toy kernel with the help of osdev and limine
+a small  kernel with the help of osdev and limine
 
 ## How to build?
 
