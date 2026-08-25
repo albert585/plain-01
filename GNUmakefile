@@ -6,7 +6,7 @@ MAKEFLAGS += -rR
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 4G -device qemu-xhci -serial stdio -monitor telnet::45454,server,nowait -no-reboot -d int -d cpu_reset
+QEMUFLAGS := -m 4G -device qemu-xhci -serial stdio -monitor telnet::45454,server,nowait -no-reboot -d int -d cpu_reset -cpu host -enable-kvm
  
 override IMAGE_NAME := template-$(ARCH)
 

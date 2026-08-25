@@ -8,14 +8,10 @@
 #include "arch/x64/drivers/pci/pci.h"
 #include "arch/x64/gdt/gdt.h"
 #include "arch/x64/idt/idt.h"
-#include "mm/hhdm.h"
-#include "mm/frame.h"
-#include "arch/x64/mm/page_table.h"
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 
-__attribute__((used,section(".limine_requests")))  volatile struct  limine_framebuffer_request framebuffer= LIMINE_FRAMEBUFFER_REQUEST;
 /* memmap / hhdm 请求已移到 kernel/src/mm/ 下 */
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
@@ -23,6 +19,8 @@ uint64_t mem;
 static char  * title="Plain,01\n";
 extern void division_error_wrapper(void);
 extern void page_fault_wrapper(void);
+extern void console_write(const char *str);
+void hcf(void);
 static inline void cli(void) {
     asm volatile("cli");
 }
@@ -84,7 +82,7 @@ static void get_model(void)
 
 
 // Halt and catch fire function.
-static void hcf(void)
+void hcf(void)
 {
     for (;;)
     {
@@ -132,9 +130,6 @@ void kmain()
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     serial_init();
-
-    hhdm_init();
-    frame_init();
     sse_start();
     serial_printk(title);
     
@@ -149,22 +144,6 @@ void kmain()
            // serial_printk("load\n", 27);
         }
     }
-    // for(uint32_t y=100; y<200;++y){
-    //     for(uint32_t x=10;x<200;++x){
-    //         uint32_t offset = y*framebuffer.response->framebuffers[0]->pitch+x*4;
-    //         fb[offset+0] = 255;
-    //         fb[offset+1]=255;
-    //         fb[offset+2]=255;
-    //
-    //         // serial_printk("load\n", 27);
-    //     }
-    // }
-    // int ret=drawfont(fb,100,200,'b');
-    // if (ret==1){serial_printk("OK\n",strlen("OK"));}
-    //draw_string(fb,100,200 ,"The quick brown fox jumps over the lazy dog." );
-    // 小写全字母
-
-    draw_string(fb,0 , 0, "Hello Plain,01");
     draw_string(fb, 100, 200, "abcdefghijklmnopqrstuvwxyz");
     // 大写全字母
     draw_string(fb, 100, 220, "ABCDEFGHIJ\nKLMNOPQRSTUVWXYZ");
@@ -184,6 +163,8 @@ void kmain()
     int n=0;
     char buf[256]={0};
     write_serial('\n');
+    console_write("plain,\n01");
+    console_write("plain,01");
     //for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2
     while(1){
         if(i==0){write_serial('>');}
@@ -204,71 +185,12 @@ void kmain()
                         trigger_divide_error();
                         print_itoa(read_pit_count());
                         serial_printk("\n\r");
-                }else if(!(kstrcmp(buf,"df"))){
+                } else if(!(kstrcmp(buf,"df"))){
                     *((volatile uint64_t*)0xDEADBEEF)=0x114514;
-                }else if(!(kstrcmp(buf,"cpuid"))){
+                } else if(!(kstrcmp(buf,"cpuid"))){
                     serial_printk("\n\r");
                     get_model();
-                }else if(!(kstrcmp(buf,"mem"))){
-                    serial_printk("\n\r");
-                    serial_printk("HHDM offset: 0x");
-                    print_hex64(hhdm_offset);
-                    serial_printk("\n\rframes total/free: ");
-                    print_itoa(pmm.total_frames);
-                    serial_printk(" / ");
-                    print_itoa(pmm.free_frames);
-                    serial_printk("\n\r");
-                    /* 自测：分配 4 帧，写一个值，释放 */
-                    uint64_t p = frame_alloc(4);
-                    serial_printk("alloc 4 frames @0x");
-                    print_hex64(p);
-                    serial_printk(", free now: ");
-                    print_itoa(pmm.free_frames);
-                    serial_printk("\n\r");
-                    volatile uint64_t *v = (volatile uint64_t *)phys_to_virt(p);
-                    *v = 0x1234;
-                    serial_printk("write via HHDM: 0x");
-                    print_hex64(*v);
-                    serial_printk("\n\r");
-                    frame_free(p, 4);
-                    serial_printk("freed, free now: ");
-                    print_itoa(pmm.free_frames);
-                    serial_printk("\n\r");
-                }else if(!(kstrcmp(buf,"pt"))){
-                    serial_printk("\n\rcurrent PML4 @0x");
-                    print_hex64((uint64_t)get_current_pml4());
-                    serial_printk("\n\r");
-                    /* 自测：建一棵独立页表，映射一个测试虚拟地址 */
-                    uint64_t *test_pml4 = (uint64_t *)phys_to_virt(frame_alloc(1));
-                    uint64_t  test_phys = frame_alloc(1);
-                    const uint64_t TEST_VA = 0xFFFF900000000000ULL;
-                    map_page(test_pml4, TEST_VA, test_phys, PF_WRITE);
-                    volatile uint64_t *tv = (volatile uint64_t *)TEST_VA;
-                    serial_printk("test pml4 @0x");
-                    print_hex64((uint64_t)test_pml4);
-                    serial_printk(", test frame @0x");
-                    print_hex64(test_phys);
-                    serial_printk("\n\rmap_page done. (NOT touching CR3)\n\r");
-                    /* 现在还没切 CR3，TEST_VA 不可访问；验证页表项内容 */
-                    uint64_t pte = 0;
-                    {
-                        uint64_t *t = test_pml4;
-                        uint64_t idx;
-                        for (int level = 0; level < 3; ++level) {
-                            idx = (TEST_VA >> (39 - 9*level)) & 0x1FF;
-                            t = (uint64_t *)phys_to_virt(t[idx] & PTE_ADDR_MASK);
-                        }
-                        idx = (TEST_VA >> 12) & 0x1FF;
-                        pte = t[idx];
-                    }
-                    serial_printk("PTE = 0x");
-                    print_hex64(pte);
-                    serial_printk(" (expect phys | P|W|NX)\n\r");
-                    unmap_page(test_pml4, TEST_VA);
-                    serial_printk("unmapped. free frames: ");
-                    print_itoa(pmm.free_frames);
-                    serial_printk("\n\r");
-                }else if(!(kstrcmp(buf,"pci"))){
+                } else if(!(kstrcmp(buf,"pci"))){
                     // serial_printk("\n\r");
                     // serial_printk("offset 0x00:");
                     // scan_bus(0x00);
@@ -283,10 +205,12 @@ void kmain()
                     // scan_bus(0x0A);
                     // serial_printk("\n\r");}
                     serial_printk("\n\r");
-                    scan_bus_again();}
+                    scan_bus_again();
+                }
                 else{
                     serial_printk("\n\r");
                     serial_printk("unknown command");
+                    console_write(buf);
                     serial_printk("\n\r");
                 }
                 for(int m=0;m<=i;m++){buf[m]='\0';}
