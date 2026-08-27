@@ -232,6 +232,24 @@ void kmain()
                     print_hex32(*(volatile uint32_t*)(xhci_base + 0x04)); /* HCSPARAMS1 (对照) */
                     serial_printk("\n\r");
 
+                } else if(!(kstrcmp(buf,"help"))){
+                    serial_printk("cmds: uname cat de df cpuid pci xhci pci_scan delay_test mm_test help\n\r");
+
+                } else if(!(kstrcmp(buf,"mm_test"))){
+                    /* mm 模块自测：物理页分配 + HHDM 访问 + map_pages 映射，读回校验 */
+                    uint64_t p = pmm_alloc_zero();
+                    volatile uint64_t *v = (volatile uint64_t *)(p + get_hhdm_base());
+                    v[0] = 0x123456789ABCDEF0ULL;                 /* 经 HHDM 写入物理页 */
+
+                    uint64_t tv = 0xFFFFC10000000000ULL;          /* 未占用的高半区测试地址 */
+                    map_pages(tv, p, 1, P_PRESENT | P_WRITE);
+                    volatile uint64_t *m = (volatile uint64_t *)tv;
+
+                    serial_printk("phys="); print_hex64(p);
+                    serial_printk(" hhdm="); print_hex64(v[0]);
+                    serial_printk(" mapped="); print_hex64(m[0]);
+                    serial_printk(m[0] == v[0] ? " PASS\n\r" : " FAIL\n\r");
+
                 } else if(!(kstrcmp(buf,"pci_scan"))){
                     serial_printk("\n\r");
                     serial_printk("offset 0x00:");
