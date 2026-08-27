@@ -62,7 +62,7 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t off
     return  inl(0xCFC);
 }
 
-uint16_t pciConfigReadDWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t offset) { /* from OSDev.org*/
+uint32_t pciConfigReadDWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t offset) { /* from OSDev.org*/
     uint32_t address;
     uint32_t lbus  = (uint32_t)bus;
     uint32_t lslot = (uint32_t)slot;
@@ -91,7 +91,7 @@ void scan_bus(uint64_t offset){
                 for(uint8_t func=0;func<8;++func){
                     if((func1 = pciConfigReadWord(bus,slot,func,0 ))!=0xFFFF){
 
-                        pci=pciConfigReadWord(bus,slot,func,offset);print_hex32(pci);
+                        pci=pciConfigReadDWord(bus,slot,func,offset);print_hex32(pci);
 
                     }
 
@@ -101,6 +101,11 @@ void scan_bus(uint64_t offset){
         }
         }
     }
+}
+uint64_t xhci(uint16_t vendor,uint16_t device){
+    uint32_t bar=pciConfigReadDWord(0,3,0,0x10);
+    uint32_t bar_upper=pciConfigReadDWord(0,3,0,0x14);
+    return bar | (uint64_t)bar_upper<<32;
 }
  void scan_bus2(){
     struct PCIConfig pci_config;
