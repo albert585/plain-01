@@ -62,6 +62,24 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t off
     return  tmp;
 }
 
+uint32_t pciConfigReadDWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t offset) { /* from OSDev.org*/
+    uint32_t address;
+    uint32_t lbus  = (uint32_t)bus;
+    uint32_t lslot = (uint32_t)slot;
+    uint32_t lfunc = (uint32_t)func;
+    uint16_t tmp = 0;
+
+    // Create configuration address as per Figure 1
+    address = (uint32_t)((lbus << 16) | (lslot << 11) |
+    (lfunc << 8) | (offset & 0xFC) | ((uint32_t)0x80000000));
+
+    // Write out the address
+    outl(pci_config_address, address);
+    // Read in the data
+    // (offset & 2) * 8) = 0 will choose the first word of the 32-bit register
+    return  inl(0xCFC);
+}
+
 void scan_bus(uint64_t offset){
     uint16_t data=0;
     uint16_t func1=0;
@@ -73,7 +91,7 @@ void scan_bus(uint64_t offset){
                 for(uint8_t func=0;func<8;++func){
                     if((func1 = pciConfigReadWord(bus,slot,func,0 ))!=0xFFFF){
 
-                        pci=pciConfigReadWord(bus,slot,func,offset);print_hex32(pci);
+                        pci=pciConfigReadDWord(bus,slot,func,offset);print_hex32(pci);
 
                     }
 
@@ -83,6 +101,11 @@ void scan_bus(uint64_t offset){
         }
         }
     }
+}
+uint64_t xhci(uint16_t vendor,uint16_t device){
+    uint32_t bar=pciConfigReadDWord(0,3,0,0x10);
+    uint32_t bar_upper=pciConfigReadDWord(0,3,0,0x14);
+    return bar | (uint64_t)bar_upper<<32;
 }
  void scan_bus2(){
     struct PCIConfig pci_config;
