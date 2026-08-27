@@ -62,6 +62,24 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t off
     return  inl(0xCFC);
 }
 
+uint16_t pciConfigReadDWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t offset) { /* from OSDev.org*/
+    uint32_t address;
+    uint32_t lbus  = (uint32_t)bus;
+    uint32_t lslot = (uint32_t)slot;
+    uint32_t lfunc = (uint32_t)func;
+    uint16_t tmp = 0;
+
+    // Create configuration address as per Figure 1
+    address = (uint32_t)((lbus << 16) | (lslot << 11) |
+    (lfunc << 8) | (offset & 0xFC) | ((uint32_t)0x80000000));
+
+    // Write out the address
+    outl(pci_config_address, address);
+    // Read in the data
+    // (offset & 2) * 8) = 0 will choose the first word of the 32-bit register
+    return  inl(0xCFC);
+}
+
 void scan_bus(uint64_t offset){
     uint16_t data=0;
     uint16_t func1=0;
