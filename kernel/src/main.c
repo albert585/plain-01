@@ -20,6 +20,7 @@ static char  * title="Plain,01\n";
 extern void division_error_wrapper(void);
 extern void page_fault_wrapper(void);
 extern void console_write(const char *str);
+extern void irq1_handler(void);
 void hcf(void);
 static inline void cli(void) {
     asm volatile("cli");
@@ -112,12 +113,26 @@ unsigned read_pit_count(void) {
     cli();
     
     // al = 位6和7中的通道，其余位清零
-    outb(0x43, 0b0000000); 
+    outb(0x43, 0b000000);
     
     count = inb(0x40);      // 低字节
     count |= inb(0x40) << 8; // 高字节
     sti();
     return count;
+}
+void delay_ms(uint64_t time){
+    uint64_t delay=ms+time;
+    while(ms<=delay){asm("hlt");}
+}
+
+void pit_init(void){
+    cli();
+    uint16_t divisor=1193180/1000;
+    outb(0x43, 0b00110100);
+    outb(0x40,divisor&0xFF);
+    outb(0x40,(divisor&0xFF00)>>8);
+    sti();
+    return;
 }
 uint64_t mem;
 void kmain()
@@ -154,15 +169,19 @@ void kmain()
     // 先设 IDT
     set_idt_entry(0x00,division_error_wrapper,0x08,0x8E,0);
     set_idt_entry(0x08,double_fault_wrapper,0x08,0x8E,0);
-    set_idt_entry(0x20, isr_wrapper, 0x08, 0x8E,0);  // 使用了 0x08
+    set_idt_entry(0x21,irq1_handler,0x08,0x8E,0);
+    set_idt_entry(0x20,isr_wrapper,0x08,0x8E,0);
     set_idt_entry(0x0E, page_fault_wrapper, 0x08, 0x8E,1);
     load_idt();
     init_pic();
+    pit_init();
     //asm("int $0x20");   // 测试：触发软件中断
     int i=0;
     int n=0;
     char buf[256]={0};
     write_serial('\n');
+
+
     console_write("plain,\n01");
     console_write("plain,01");
     //for(int m=0;m<256;m++){buf[m]='\0';}//很粗暴的初始化x2
@@ -174,7 +193,7 @@ void kmain()
                 buf[i]='\0';
                 if(!(kstrcmp(buf,"uname"))){
                     serial_printk("\n\r");
-                    serial_printk("Plain-01 prototype d ");
+                    serial_printk("Plain-01 prototype f ");
                     draw_string(fb,0,16*(++n),"A toy kernel based on OSDev and limine");
                     serial_printk("\n\r");
                 } else if(!(kstrcmp(buf,"cat"))){
@@ -191,22 +210,33 @@ void kmain()
                     serial_printk("\n\r");
                     get_model();
                 } else if(!(kstrcmp(buf,"pci"))){
-                    // serial_printk("\n\r");
-                    // serial_printk("offset 0x00:");
-                    // scan_bus(0x00);
-                    // serial_printk("\n\r");
-                    // serial_printk("offset 0x08:");
-                    // scan_bus(0x08);
-                    // serial_printk("\n\r");
-                    // serial_printk("offset 0x09:");
-                    // scan_bus(0x09);
-                    // serial_printk("\n\r");
-                    // serial_printk("offset 0x0A:");
-                    // scan_bus(0x0A);
-                    // serial_printk("\n\r");}
+
                     serial_printk("\n\r");
-                    scan_bus_again();
-                }
+                    scan_bus2();
+                }else if(!(kstrcmp(buf,"delay_test"))){
+                    delay_ms(1000);
+                    serial_printk("\n\r");
+                } else if(!(kstrcmp(buf,"pci_scan"))){
+
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x00:");
+                    scan_bus(0x00);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x04:");
+                    scan_bus(0x04);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x08:");
+                    scan_bus(0x08);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x0A:");
+                    scan_bus(0x0A);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x10:");
+                    scan_bus(0x10);
+                    serial_printk("\n\r");
+                    serial_printk("offset 0x14:");
+                    scan_bus(0x14);
+                    serial_printk("\n\r");}
                 else{
                     serial_printk("\n\r");
                     serial_printk("unknown command");

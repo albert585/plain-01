@@ -42,15 +42,12 @@ init_pic:
     mov al, 0x01
     out 0xA1, al
 
-    mov al,0xFC
+    mov al,0xF8
     out 0x21,al
 
     mov al,0xFF
     out 0xA1,al
-    out 0x20,al;
-    mov al, 0x20
 
-    sti
     pop r15
     pop r14
     pop r13

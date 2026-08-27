@@ -1,2 +1,0 @@
-[permissions]
-allow = ["Bash=cd /home/albert/Projects/plain-01 && objdump -d --start-address=0xffffffff80002cf0 --stop-address=0xffffffff80002d40 kernel/bin-x86_64/kernel"]

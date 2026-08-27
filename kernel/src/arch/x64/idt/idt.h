@@ -6,3 +6,5 @@ void set_idt_entry(uint8_t vec, void (*handler)(void), uint16_t selector, uint8_
 void load_idt(void);
 void interrupt_handler(void);
 void double_fault_handler(uint64_t error_code,uint64_t rip);
+extern uint64_t ms;
+extern uint64_t second;

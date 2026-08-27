@@ -2,8 +2,8 @@
 #include "arch/x64/drivers/serial.h"
 #include <lib/memory.h>
 
-void scan_bus(uint8_t offset);
-void scan_bus_again();
+void scan_bus(uint64_t offset);
+void scan_bus2();
 static void print_hex16(uint16_t val){
     char buf[6];
     for(int i=3;i>=0;--i){
@@ -13,6 +13,17 @@ static void print_hex16(uint16_t val){
     }
     buf[4]=' ';
     buf[5]='\0';
+    serial_printk(buf);
+}
+static void print_hex32(uint32_t val) {
+    char buf[10];
+    for (int i = 7; i >= 0; --i) {
+        uint8_t temp = val & 0xF;
+        buf[i] = temp < 10 ? '0' + temp : 'A' + (temp - 10);
+        val >>= 4;
+    }
+    buf[8] = ' ';
+    buf[9] = '\0';
     serial_printk(buf);
 }
 static void print_itoa(uint64_t val){
