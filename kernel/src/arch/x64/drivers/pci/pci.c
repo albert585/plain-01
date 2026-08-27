@@ -59,7 +59,7 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint64_t off
     // Read in the data
     // (offset & 2) * 8) = 0 will choose the first word of the 32-bit register
     tmp = (uint16_t)((inl(pci_data_address) >> ((offset & 2) * 8)) & 0xFFFF);
-    return  inl(0xCFC);
+    return  tmp;
 }
 
 void scan_bus(uint64_t offset){
