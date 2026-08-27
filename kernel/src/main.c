@@ -8,10 +8,12 @@
 #include "arch/x64/drivers/pci/pci.h"
 #include "arch/x64/gdt/gdt.h"
 #include "arch/x64/idt/idt.h"
+#include "mm/mem.h"
+#include "mm/paging.h"
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
-
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = LIMINE_HHDM_REQUEST;
 /* memmap / hhdm 请求已移到 kernel/src/mm/ 下 */
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
@@ -21,6 +23,7 @@ extern void division_error_wrapper(void);
 extern void page_fault_wrapper(void);
 extern void console_write(const char *str);
 extern void irq1_handler(void);
+extern uint64_t xhci();
 void hcf(void);
 static inline void cli(void) {
     asm volatile("cli");
@@ -141,9 +144,12 @@ void kmain()
     {
         hcf();
     }
-
+    uint64_t offset;
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
-
+    if(hhdm_request.response){
+        offset=hhdm_request.response->offset;
+    }
+    mm_init(offset);
     serial_init();
     sse_start();
     serial_printk(title);
@@ -216,8 +222,17 @@ void kmain()
                 }else if(!(kstrcmp(buf,"delay_test"))){
                     delay_ms(1000);
                     serial_printk("\n\r");
-                } else if(!(kstrcmp(buf,"pci_scan"))){
 
+                }else if(!(kstrcmp(buf,"xhci"))){
+                    uint64_t test=xhci();
+                    volatile uint8_t *xhci_base=mmio_map(test, 4);   /* xHCI BAR 16K = 4 页 */
+                    print_hex16(xhci_base[0x00]);                  /* CAPLENGTH */
+                    print_hex16(xhci_base[0x02]);                  /* HCIVERSION 低字节 */
+                    print_hex16(xhci_base[0x03]);                  /* HCIVERSION 高字节 */
+                    print_hex32(*(volatile uint32_t*)(xhci_base + 0x04)); /* HCSPARAMS1 (对照) */
+                    serial_printk("\n\r");
+
+                } else if(!(kstrcmp(buf,"pci_scan"))){
                     serial_printk("\n\r");
                     serial_printk("offset 0x00:");
                     scan_bus(0x00);

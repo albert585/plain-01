@@ -93,24 +93,24 @@ static inline void outl(uint16_t port, uint32_t data)
 //                      : "memory", "cc");
 // }
 //
-// static inline void mmio_write32(uint32_t *addr, uint32_t data)
-// {
-//     *(volatile uint32_t *)addr = data;
-// }
-//
-// static inline uint32_t mmio_read32(void *addr)
-// {
-//     return *(volatile uint32_t *)addr;
-// }
-//
-// // static inline uint64_t mmio_read64(void *addr) {
-// //     return *(volatile uint64_t *)addr;
-// // }
-// //
-// // static inline void mmio_write64(void *addr, uint64_t data) {
-// //     *(volatile uint64_t *)addr = data;
-// // }
-//
+static inline void mmio_write32(uint32_t *addr, uint32_t data)
+{
+    *(volatile uint32_t *)addr = data;
+}
+
+static inline uint32_t mmio_read32(void *addr)
+{
+    return *(volatile uint32_t *)addr;
+}
+
+static inline uint64_t mmio_read64(void *addr) {
+    return *(volatile uint64_t *)addr;
+}
+
+static inline void mmio_write64(void *addr, uint64_t data) {
+    *(volatile uint64_t *)addr = data;
+}
+
 // static inline uint64_t rdmsr(uint32_t msr)
 // {
 //     uint32_t eax, edx;
