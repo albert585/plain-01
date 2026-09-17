@@ -8,6 +8,6 @@ a small  kernel with the help of osdev and limine
 $ make
 ```
 ## TODO
-- [ ] completed the IDT exceptions table
-- [ ] 正式开始使用PIC，添加PIC Timer
-- [ ] 开启TSS
+- [？] completed the IDT exceptions table
+- [✓] 正式开始使用PIC，添加PIC Timer
+- [] 开启TSS
