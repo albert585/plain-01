@@ -1,5 +1,5 @@
 #include "idt.h"
-
+#include "lib/stdio.h"
 #include <stdint.h>
 #include "arch/x64/drivers/serial.h"
 #include "arch/x64/drivers/framebuffer.h"
@@ -39,7 +39,7 @@ void load_idt(void)
 void interrupt_handler(void){
     ms++;
 
-    if(!(ms%1000)){second++;}
+    if(!(ms%1000)){second++;} //当可以被1000整除时，加一秒
     return;
 
 }
@@ -89,14 +89,8 @@ void  page_fault_handler(uint64_t error_code,uint64_t rip){
     uint8_t *fb=(uint8_t*)framebuffer.response->framebuffers[0]->address;
 
     struct RGBA c={0,0,0};
-    for(uint32_t y=0; y<framebuffer.response->framebuffers[0]->height;++y){
-        for(uint32_t x=0;x<framebuffer.response->framebuffers[0]->width;++x){
-            draw_pixel(fb,x,y,c);}}
-            draw_string(fb,500,500,"PAGE FAULT");
-            draw_string(fb,500,517,"ERROR CODE:");
-            print_hex64(error_code,fb,589,517);
-            draw_string(fb,500,534,"RIP:0x");
-            print_hex64(rip,fb,549,534);
+    printf("\n---Page fault at RIP: 0x%llx, error code: 0x%llx---\n", rip, error_code);
+
 }
 static char scancode_to_ascii[128] = {
     0,   0,   '1', '2', '3', '4', '5', '6',

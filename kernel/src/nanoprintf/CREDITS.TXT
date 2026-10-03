@@ -1,0 +1,40 @@
+nanoprintf
+==========
+
+单文件的 printf/snprintf 实现（无 libc、无 malloc、无浮点依赖），用于给内核提供
+snprintf 风格的格式化。
+
+  项目:  https://github.com/charlesnicholson/nanoprintf
+  版本:  v0.8.1 (tag, 发布于 2026-09-25)
+  文件:  nanoprintf.h, LICENSE
+  来源:  api.github.com/repos/charlesnicholson/nanoprintf/contents/nanoprintf.h?ref=v0.8.1
+         （raw.githubusercontent.com 在本地网络被重置，故走 API 取 base64 内容）
+  许可:  Unlicense 或 0BSD 双许可，任选其一（全文见 LICENSE）
+
+校验（上游 git blob sha / 下载文件 sha256）：
+  nanoprintf.h  blob 5c9977374ac38a13f2aa45e8cade7fa0974620a0
+                下载原文 sha256 e9c82abd6a9448745ba38cd1aa02fb9d71430ef13d35d9384c54fc1a9f88a86d
+  LICENSE       blob 572b70bd3f5baec7ab924e9b28af812b6b4699c8
+
+本地改动（相对上游 blob）：
+  - 只把第 1 行注释里的版本占位符 @NPF_VERSION@ 替换成 v0.8.1
+    （上游 release 脚本本身也做这一步）。替换后本机文件 sha256：
+    afaf99c7181e0e62247fd2c846ab5b0fab46c242880e1b99585b43b878437321
+  - 代码部分一字未改。上游更新时：覆盖 nanoprintf.h / LICENSE，
+    重新记录上面的版本与 sha，并核对函数名（v0.8.x 是带下划线的
+    npf_snprintf_ / npf_pprintf_，对外宏是 npf_snprintf(...) / npf_pprintf(...)）。
+
+配置开关（在 kernel/src/lib/printf.c 里定义；nanoprintf 要求"只要定义了任何一个
+开关，就必须把全部 9 个都定义"）：
+  FIELD_WIDTH=1 PRECISION=1 FLOAT=0 LARGE=1 SMALL=1 BINARY=0 WRITEBACK=0
+  ALT_FORM=1 FLOAT_SINGLE_PRECISION=0
+
+用法：
+  薄包装（串口 0x3F8）:  #include "lib/printf.h"      -> printf(...) / println(...)
+  直接拿字符串:          #include "nanoprintf/nanoprintf.h"
+                         npf_snprintf(buf, sizeof buf, "...", ...)
+  注意（v0.8.1 / x86_64 LP64 实测，逐条与 libc snprintf 对比）：
+    %lu %ld %llu %zu %d %08x %#x %-6d %.3s %s   全部与 libc 一致
+    %p 是唯一不同的：输出不带 "0x" 前缀、按 2*sizeof(void*) 定宽补零的十六进制
+       （libc 给 "0xdeadbeef"，nanoprintf 给 "00000000deadbeef"）
+    上游头文件里 "lack of 'l' length modifier support" 那句注释与 v0.8.1 实现不符。

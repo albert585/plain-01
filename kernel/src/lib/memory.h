@@ -8,4 +8,4 @@ static uint64_t heap_cur = HEAP_VBASE, heap_end = HEAP_VBASE + 16 * 0x1000;
 void kmemcpy(void *dst,void const * src,size_t n);
 void kmemset(void *dst,const char c,size_t n);
 void *kmalloc(size_t n);
-void kfree(void * p);
+void kfree(void);

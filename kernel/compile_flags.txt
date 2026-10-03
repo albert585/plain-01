@@ -1,0 +1,27 @@
+# 本内核项目用 make 构建，不生成 compile_commands.json，所以这里给 clangd 静态 flags。
+# 不能用 .clangd 的 CompileFlags.Add 写这些路径：clangd 不解析那里的相对路径
+# （clangd/clangd#1038 至今未修），-I src 会失效；而 compile_flags.txt 所在目录会被
+# clangd 当作编译工作目录，所以这里的 src / freestnd-c-hdrs 与 GNUmakefile 写法一致。
+# 维护约定：改 GNUmakefile 里的 CFLAGS / CPPFLAGS 时，请同步改本文件。
+-target
+x86_64-unknown-none
+-m64
+-march=x86-64
+-mno-red-zone
+-mcmodel=kernel
+-std=gnu11
+-Wall
+-Wextra
+-nostdinc
+-ffreestanding
+-fno-builtin
+-fno-stack-protector
+-fno-stack-check
+-fno-PIC
+-ffunction-sections
+-fdata-sections
+-I
+src
+-isystem
+freestnd-c-hdrs
+-DLIMINE_API_REVISION=3

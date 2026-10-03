@@ -30,6 +30,18 @@ Third-party components
    License: 0BSD
    See: kernel/freestnd-c-hdrs/LICENSE
 
+4. nanoprintf: tiny embeddable printf/snprintf replacement
+   Location: kernel/src/nanoprintf/nanoprintf.h, kernel/src/nanoprintf/LICENSE
+   Author:   Charles Nicholson
+   Source:   https://github.com/charlesnicholson/nanoprintf
+   Version:  v0.8.1 (tag)
+   License:  dual-licensed Unlicense / 0BSD (see LICENSE in that directory)
+   Note:     Used unmodified except for substituting the "@NPF_VERSION@"
+             placeholder in the first comment with "v0.8.1". Provides the
+             snprintf-style formatter behind kernel/src/lib/printf.c
+             (printf/println to the serial port). Provenance and checksums:
+             kernel/src/nanoprintf/CREDITS.TXT
+
 X License (applies to the font data above)
 ------------------------------------------
 

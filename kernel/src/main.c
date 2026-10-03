@@ -11,7 +11,9 @@
 #include "arch/x64/idt/idt.h"
 #include "mm/mem.h"
 #include "mm/paging.h"
-__attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
+#include "lib/stdio.h"
+extern void acpi_init();
+__attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(5);
 
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = LIMINE_HHDM_REQUEST;
@@ -89,6 +91,7 @@ static void get_model(void)
 // Halt and catch fire function.
 void hcf(void)
 {
+    serial_printk("Limine base revision not supported. Halted\n");
     for (;;)
     {
         asm("hlt");
@@ -182,6 +185,8 @@ void kmain()
     load_idt();
     init_pic();
     pit_init();
+    printf("\x1b[0m\x1b[2J\x1b[3J\x1b[H");
+    acpi_init();
     //asm("int $0x20");   // 测试：触发软件中断
     int i=0;
     int n=0;
@@ -214,7 +219,7 @@ void kmain()
                 } else if(!(kstrcmp(buf,"kmalloc_test"))){
                     int *p=kmalloc(sizeof(int));
                     if(p){serial_printk("OK");};
-                    kfree(p);
+                    kfree();
                 }else if(!(kstrcmp(buf,"cpuid"))){
                     serial_printk("\n\r");
                     get_model();
@@ -253,26 +258,14 @@ void kmain()
                     serial_printk(" mapped="); print_hex64(m[0]);
                     serial_printk(m[0] == v[0] ? " PASS\n\r" : " FAIL\n\r");
 
-                } else if(!(kstrcmp(buf,"pci_scan"))){
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x00:");
-                    scan_bus(0x00);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x04:");
-                    scan_bus(0x04);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x08:");
-                    scan_bus(0x08);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x0A:");
-                    scan_bus(0x0A);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x10:");
-                    scan_bus(0x10);
-                    serial_printk("\n\r");
-                    serial_printk("offset 0x14:");
-                    scan_bus(0x14);
-                    serial_printk("\n\r");}
+                } else if (!kstrcmp(buf, "pci_scan")) {
+                    static const uint8_t offs[] = {0x00, 0x04, 0x08, 0x0A, 0x10, 0x14};
+                
+                    for (unsigned i = 0; i < sizeof(offs) / sizeof(offs[0]); i++) {
+                        println("offset 0x%02X:", (unsigned)offs[i]);
+                        scan_bus(offs[i]);
+                    }
+                }
                 else{
                     serial_printk("\n\r");
                     serial_printk("unknown command");
