@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <arch/x64/x64.h>
 #include <stdint.h>
+#include "lib/memory.h"
 #include "lib/strings.h"
 #include "arch/x64/drivers/framebuffer.h"
 #include "arch/x64/drivers/pci/pci.h"
@@ -210,9 +211,11 @@ void kmain()
                         trigger_divide_error();
                         print_itoa(read_pit_count());
                         serial_printk("\n\r");
-                } else if(!(kstrcmp(buf,"df"))){
-                    *((volatile uint64_t*)0xDEADBEEF)=0x114514;
-                } else if(!(kstrcmp(buf,"cpuid"))){
+                } else if(!(kstrcmp(buf,"kmalloc_test"))){
+                    int *p=kmalloc(sizeof(int));
+                    if(p){serial_printk("OK");};
+                    kfree(p);
+                }else if(!(kstrcmp(buf,"cpuid"))){
                     serial_printk("\n\r");
                     get_model();
                 } else if(!(kstrcmp(buf,"pci"))){
